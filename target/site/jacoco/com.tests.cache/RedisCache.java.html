@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RedisCache.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">multiple-databases-test</a> &gt; <a href="index.source.html" class="el_package">com.tests.cache</a> &gt; <span class="el_source">RedisCache.java</span></div><h1>RedisCache.java</h1><pre class="source lang-java linenums">package com.tests.cache;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.quarkus.redis.datasource.RedisDataSource;
+import io.quarkus.redis.datasource.value.SetArgs;
+import io.quarkus.redis.datasource.value.ValueCommands;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
+@ApplicationScoped
+public class RedisCache {
+
+    private final RedisDataSource redisDataSource;
+
+    @Inject
+    @ConfigProperty(name = &quot;cache-default-ttl&quot;, defaultValue = &quot;60&quot;)
+    long defaultTtlInSeconds;
+
+<span class="nc" id="L28">    public RedisCache(RedisDataSource redisDataSource) {</span>
+<span class="nc" id="L29">        this.redisDataSource = redisDataSource;</span>
+<span class="nc" id="L30">    }</span>
+
+    private Duration getDefaultTtl() {
+<span class="nc" id="L33">        return Duration.ofSeconds(defaultTtlInSeconds);</span>
+    }
+
+    public &lt;T&gt; T get(String key, Class&lt;T&gt; clazz) {
+<span class="nc" id="L37">        ValueCommands&lt;String, T&gt; commands = redisDataSource.value(clazz);</span>
+<span class="nc" id="L38">        return commands.get(key);</span>
+    }
+
+    public &lt;T&gt; void set(String key, T value, Duration ttl) {
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L43">        ValueCommands&lt;String, T&gt; commands = redisDataSource.value((Class&lt;T&gt;) value.getClass());</span>
+<span class="nc" id="L44">        commands.set(key, value, new SetArgs().ex(ttl));</span>
+<span class="nc" id="L45">    }</span>
+
+    public void evict(String key) {
+<span class="nc" id="L48">        ValueCommands&lt;String, String&gt; commands = redisDataSource.value(String.class);</span>
+<span class="nc" id="L49">        commands.getdel(key);</span>
+<span class="nc" id="L50">    }</span>
+
+    public &lt;T&gt; T getOrSetIfAbsent(String key, Supplier&lt;T&gt; computation, Duration ttl, Class&lt;T&gt; clazz) {
+<span class="nc" id="L53">        T cached = get(key, clazz);</span>
+<span class="nc bnc" id="L54" title="All 2 branches missed.">        if (cached != null) {</span>
+<span class="nc" id="L55">            return cached;</span>
+        } else {
+<span class="nc" id="L57">            T result = computation.get();</span>
+<span class="nc" id="L58">            set(key, result, ttl);</span>
+<span class="nc" id="L59">            return result;</span>
+        }
+    }
+
+    public &lt;T&gt; T getOrSetIfAbsent(String key, Supplier&lt;T&gt; computation, Class&lt;T&gt; clazz) {
+<span class="nc" id="L64">        return getOrSetIfAbsent(key, computation, getDefaultTtl(), clazz);</span>
+    }
+
+    public &lt;T&gt; List&lt;T&gt; getOrSetIfAbsent(String key, Supplier&lt;List&lt;T&gt;&gt; computation, Duration ttl) {
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L69">        List&lt;T&gt; cached = get(key, List.class);</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (cached != null) {</span>
+<span class="nc" id="L71">            return cached;</span>
+        } else {
+<span class="nc" id="L73">            List&lt;T&gt; result = computation.get();</span>
+<span class="nc" id="L74">            set(key, result, ttl);</span>
+<span class="nc" id="L75">            return result;</span>
+        }
+    }
+
+    public &lt;T&gt; List&lt;T&gt; getOrSetIfAbsent(String key, Supplier&lt;List&lt;T&gt;&gt; computation) {
+<span class="nc" id="L80">        return getOrSetIfAbsent(key, computation, getDefaultTtl());</span>
+    }
+
+    public &lt;K, V&gt; void setMap(String key, Map&lt;K, V&gt; map, Duration ttl) {
+<span class="nc" id="L84">        String jsonMap = serializeMap(map);</span>
+<span class="nc" id="L85">        ValueCommands&lt;String, String&gt; commands = redisDataSource.value(String.class);</span>
+<span class="nc" id="L86">        commands.set(key, jsonMap, new SetArgs().ex(ttl));</span>
+<span class="nc" id="L87">    }</span>
+
+    public &lt;K, V&gt; String serializeMap(Map&lt;K, V&gt; map) {
+        try {
+<span class="nc" id="L91">            ObjectMapper mapper = new ObjectMapper();</span>
+<span class="nc" id="L92">            return mapper.writeValueAsString(map);</span>
+<span class="nc" id="L93">        } catch (Exception e) {</span>
+<span class="nc" id="L94">            throw new RuntimeException(&quot;Error serializing map&quot;, e);</span>
+        }
+    }
+
+    public &lt;K, V&gt; Map&lt;K, V&gt; getMap(String key, Class&lt;K&gt; keyType, Class&lt;V&gt; valyeType) {
+<span class="nc" id="L99">        ValueCommands&lt;String, String&gt; commands = redisDataSource.value(String.class);</span>
+<span class="nc" id="L100">        String jsonMap = commands.get(key);</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (jsonMap != null) {</span>
+<span class="nc" id="L102">            return deserializeMap(jsonMap, keyType, valyeType);</span>
+        }
+<span class="nc" id="L104">        return null;</span>
+    }
+
+    private &lt;K, V&gt; Map&lt;K, V&gt; deserializeMap(String jsonMap, Class&lt;K&gt; keyType, Class&lt;V&gt; valueType) {
+        try {
+<span class="nc" id="L109">            ObjectMapper mapper = new ObjectMapper();</span>
+<span class="nc" id="L110">            return mapper.readValue(jsonMap, new TypeReference&lt;Map&lt;K, V&gt;&gt;() {</span>
+            });
+<span class="nc" id="L112">        } catch (Exception e) {</span>
+<span class="nc" id="L113">            throw new RuntimeException(&quot;Error deserializing map&quot;, e);</span>
+        }
+    }
+
+    public &lt;K, V&gt; Map&lt;K, V&gt; getOrSetIfAbsent(String key, Supplier&lt;Map&lt;K, V&gt;&gt; computation, Class&lt;K&gt; keyType,
+            Class&lt;V&gt; valueType, Duration ttl) {
+<span class="nc" id="L119">        Map&lt;K, V&gt; cached = getMap(key, keyType, valueType);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (cached != null) {</span>
+<span class="nc" id="L121">            return cached;</span>
+        } else {
+<span class="nc" id="L123">            Map&lt;K, V&gt; result = computation.get();</span>
+<span class="nc" id="L124">            set(key, result, ttl);</span>
+<span class="nc" id="L125">            return result;</span>
+        }
+    }
+
+    public &lt;K, V&gt; Map&lt;K, V&gt; getOrSetIfAbsent(String key, Supplier&lt;Map&lt;K, V&gt;&gt; computation, Class&lt;K&gt; keyType,
+            Class&lt;V&gt; valueType) {
+<span class="nc" id="L131">        return getOrSetIfAbsent(key, computation, keyType, valueType, getDefaultTtl());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

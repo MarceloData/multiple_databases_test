@@ -1,0 +1,4 @@
+com/tests/profiles/Db2Profile.class
+com/tests/profiles/OracleProfile.class
+com/tests/repositories/ActorRepositoryTest.class
+com/tests/profiles/HiveProfile.class

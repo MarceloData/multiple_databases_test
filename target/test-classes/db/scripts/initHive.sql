@@ -1,0 +1,17 @@
+CREATE SCHEMA IF NOT EXISTS SAKILA;
+
+SET SCHEMA
+    SAKILA;
+
+CREATE DATABASE IF NOT EXISTS LANGUAGE(
+    language_id INT PRIMARY KEY,
+    name VARCHAR(25),
+    last_update DATETIME
+);
+
+INSERT INTO
+    SAKILA.LANGUAGE
+VALUES
+    (1, 'English', '2025-05-15 01:12:54'),
+    (2, 'Italian', '2025-05-15 01:12:54'),
+    (3, 'Japanese', '2025-05-15 01:12:54');

@@ -1,0 +1,25 @@
+{
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "microprofile.tools.validation.unknown.excluded": [
+        "*/mp-rest/providers/*/priority",
+        "mp.openapi.schema.*",
+        "kafka-streams.*",
+        "camel.*",
+        "quarkus.health.openapi.included",
+        "quarkus.swagger-ui.urls.default",
+        "mp.openpai.extensions.smallrye.info.title",
+        "mp.openpai.extensions.smallrye.info.version",
+        "mp.openpai.extensions.smallrye.info.description",
+        "quarkus.hibernate-orm.*",
+        "quarkus.datasource.*",
+        "quarkus.redis.*",
+        "quarkus.reids.*",
+        "quarkus.cache.*",
+        "cache.*",
+        "mp.*",
+        "quarkus.test.*",
+        "quarkus.jacoco.*",
+        "quarkus.log.*"
+    ]
+}
